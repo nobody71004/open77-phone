@@ -1,0 +1,249 @@
+/* open77_phone -- the look. A graphite phone with a brushed-titanium rim, a black glass bezel, a front camera, an
+   earpiece and three side keys; Android's live screen behind glass; a shelf of glass controls under it. No images:
+   every surface is a gradient, every icon an inline SVG. Sizes come from phone.js (--sw/--sh: the screen in px). */
+
+:root {
+  --accent: #34e0ff;
+  --accent-2: #8b7bff;
+  --ok: #3ddc84;
+  --warn: #ffb547;
+  --bad: #ff5470;
+  --busy: #b79bff;
+  --ink: #eef3fb;
+  --ink-2: #aab4c4;
+  --ink-3: #6f7a8c;
+  --glass: rgba(18, 21, 28, 0.78);
+  --glass-edge: rgba(255, 255, 255, 0.10);
+  --sw: 1000px;               /* the screen */
+  --sh: 562px;
+  --bz: 14px;                 /* bezel */
+  --fr: 7px;                  /* rim */
+  --r-screen: 34px;
+  --r-bezel: calc(var(--r-screen) + var(--bz));
+  --r-device: calc(var(--r-bezel) + var(--fr));
+  --font: "Segoe UI Variable Text", "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; font-family: var(--font);
+  color: var(--ink); -webkit-font-smoothing: antialiased; user-select: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+kbd { font: 600 12px/1 var(--font); letter-spacing: .02em; padding: 4px 7px 5px; border-radius: 6px; color: var(--ink);
+  background: linear-gradient(#2a303b, #1c2029); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 1px 0 rgba(0,0,0,.6); }
+svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round;
+  stroke-linejoin: round; }
+
+/* ---- the room around the phone ------------------------------------------------------------------------------- */
+
+#scrim { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s ease;
+  background: radial-gradient(120% 90% at var(--scrim-x, 72%) 50%, rgba(4, 6, 12, 0.10) 0%, rgba(4, 6, 12, 0.55) 55%,
+    rgba(2, 3, 8, 0.78) 100%); }
+body.open.dim #scrim { opacity: 1; }
+
+#dock { position: fixed; top: 50%; display: flex; flex-direction: column; align-items: center; gap: 18px;
+  transform: translateY(-50%); }
+#dock.side-right { right: 96px; }
+#dock.side-left { left: 96px; }
+#dock.side-center { left: 50%; transform: translate(-50%, -50%); }
+#dock.closed { visibility: hidden; }
+/* in and out: the dock moves, never the screen's own box (noVNC maps the pointer through it) */
+#dock .device, #dock .shelf { transition: opacity .26s ease, transform .38s cubic-bezier(.18, .9, .22, 1); }
+#dock.entering .device, #dock.leaving .device { opacity: 0; transform: translateY(46px) scale(.965); }
+#dock.entering .shelf, #dock.leaving .shelf { opacity: 0; transform: translateY(24px); }
+#dock.leaving .device, #dock.leaving .shelf { transition-duration: .2s, .24s; transition-timing-function: ease, ease-in; }
+
+/* ---- the phone ------------------------------------------------------------------------------------------------ */
+
+.device { position: relative; width: calc(var(--sw) + 2 * (var(--bz) + var(--fr)));
+  height: calc(var(--sh) + 2 * (var(--bz) + var(--fr))); border-radius: var(--r-device); padding: var(--fr);
+  background:
+    linear-gradient(160deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 22%, rgba(255,255,255,0) 74%, rgba(255,255,255,.14) 100%),
+    linear-gradient(90deg, #4b5058 0%, #2b2f36 7%, #1d2026 20%, #2a2e35 50%, #1d2026 80%, #2b2f36 93%, #50565f 100%);
+  box-shadow:
+    0 60px 110px -30px rgba(0, 0, 0, .85),
+    0 24px 48px -12px rgba(0, 0, 0, .55),
+    0 0 0 1px rgba(0, 0, 0, .65),
+    inset 0 0 0 1px rgba(255, 255, 255, .14),
+    inset 0 1.5px 0 rgba(255, 255, 255, .28),
+    inset 0 -1.5px 0 rgba(0, 0, 0, .55); }
+/* brushed metal: fine lines along the rim */
+.device::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: .35;
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, rgba(0,0,0,0) 1px 3px); }
+/* the chamfer: a lit edge just inside the rim */
+.device::after { content: ""; position: absolute; inset: 3px; border-radius: calc(var(--r-device) - 3px);
+  pointer-events: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 1px 0 rgba(255,255,255,.18); }
+/* antenna bands: four short dark breaks in the rim */
+.rim .band { position: absolute; background: linear-gradient(#0e1013, #24272d); }
+.device.landscape .rim .b1, .device.landscape .rim .b2 { top: 0; width: 5px; height: var(--fr); }
+.device.landscape .rim .b3, .device.landscape .rim .b4 { bottom: 0; width: 5px; height: var(--fr); }
+.device.landscape .rim .b1, .device.landscape .rim .b3 { left: 12%; }
+.device.landscape .rim .b2, .device.landscape .rim .b4 { right: 12%; }
+.device.portrait .rim .b1, .device.portrait .rim .b2 { left: 0; height: 5px; width: var(--fr); }
+.device.portrait .rim .b3, .device.portrait .rim .b4 { right: 0; height: 5px; width: var(--fr); }
+.device.portrait .rim .b1, .device.portrait .rim .b3 { top: 12%; }
+.device.portrait .rim .b2, .device.portrait .rim .b4 { bottom: 12%; }
+
+/* the side keys: on the top edge of a phone held sideways, on the right edge of one held upright */
+.key { position: absolute; border: 0; padding: 0; border-radius: 3px;
+  background: linear-gradient(180deg, #8a919b, #4a4f57 45%, #2c3036);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35); transition: filter .15s, transform .12s; }
+.key:hover { filter: brightness(1.35) drop-shadow(0 0 6px rgba(52, 224, 255, .55)); }
+.key:active { transform: scale(.94); }
+.device.landscape .key { top: -4px; height: 6px; }
+.device.landscape .vol-up { left: calc(18% + 0px); width: 74px; }
+.device.landscape .vol-down { left: calc(18% + 86px); width: 74px; }
+.device.landscape .power { right: 21%; width: 96px; }
+.device.portrait .key { right: -4px; width: 6px; }
+.device.portrait .vol-up { top: 17%; height: 74px; }
+.device.portrait .vol-down { top: calc(17% + 86px); height: 74px; }
+.device.portrait .power { top: 42%; height: 96px; }
+
+.bezel { position: relative; width: 100%; height: 100%; padding: var(--bz); border-radius: var(--r-bezel);
+  background: radial-gradient(120% 140% at 30% 0%, #15171c 0%, #050607 55%, #020203 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05), inset 0 0 22px rgba(0, 0, 0, .9); }
+
+/* the front camera and the earpiece, in the bezel beside the screen */
+.camera { position: absolute; width: 13px; height: 13px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #0b1220 0 30%, #05070b 31% 100%);
+  box-shadow: 0 0 0 2px #0f1116, 0 0 0 3px rgba(255,255,255,.04), inset 0 0 3px rgba(80, 120, 255, .35); }
+.camera i { position: absolute; left: 3px; top: 3px; width: 7px; height: 7px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(150, 190, 255, .9) 0 8%, #233a6a 18%, #0a1020 48%, #000 70%); }
+.camera i::after { content: ""; position: absolute; right: 1px; bottom: 2px; width: 2px; height: 2px; border-radius: 50%;
+  background: rgba(255, 140, 220, .55); }
+.device.landscape .camera { left: calc((var(--bz) - 13px) / 2); top: calc(50% - 6.5px); }
+.device.portrait .camera { top: calc((var(--bz) - 13px) / 2); left: calc(50% - 6.5px); }
+.speaker { position: absolute; border-radius: 3px; background: linear-gradient(#000, #15181e);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.05); }
+.device.landscape .speaker { left: calc((var(--bz) - 4px) / 2); top: calc(50% - 64px); width: 4px; height: 40px; }
+.device.portrait .speaker { top: calc((var(--bz) - 4px) / 2); left: calc(50% - 64px); height: 4px; width: 40px; }
+
+.screen { position: relative; width: var(--sw); height: var(--sh); border-radius: var(--r-screen); overflow: hidden;
+  background: #000; box-shadow: 0 0 0 1px rgba(0, 0, 0, .9); transition: box-shadow .6s ease; }
+.device.live .screen { box-shadow: 0 0 0 1px rgba(52, 224, 255, .22), 0 0 34px rgba(52, 224, 255, .10); }
+#vnc { position: absolute; inset: 0; background: #000; }
+#vnc > div { background: #000 !important; }
+#vnc canvas { outline: none; }
+body.pointer-android #vnc, body.pointer-android #vnc canvas { cursor: none !important; }
+button, .seg button, .switch, .pill, .key { cursor: pointer; }
+/* glass: a soft diagonal sheen and a darker edge, never in the pointer's way */
+.glass { position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background:
+    linear-gradient(118deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.025) 24%, rgba(255,255,255,0) 36%),
+    radial-gradient(140% 120% at 50% 50%, rgba(0,0,0,0) 62%, rgba(0,0,0,.28) 100%); }
+
+/* ---- what the screen says when it is not Android --------------------------------------------------------------- */
+
+.card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 32px; gap: 6px;
+  background:
+    radial-gradient(90% 80% at 50% 38%, rgba(52, 224, 255, .10), rgba(0,0,0,0) 60%),
+    radial-gradient(80% 60% at 80% 100%, rgba(139, 123, 255, .12), rgba(0,0,0,0) 60%),
+    linear-gradient(180deg, #0b0e15, #05060a); }
+.card[hidden] { display: none; }
+.card h1 { margin: 14px 0 0; font-weight: 650; font-size: 26px; letter-spacing: -.01em; }
+.card p { margin: 0; max-width: 520px; color: var(--ink-2); font-size: 15px; line-height: 1.5; }
+.card-actions { display: flex; gap: 10px; margin-top: 18px; }
+.card-actions[hidden] { display: none; }
+.card-icon { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 20px; color: var(--accent);
+  background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.10), 0 10px 30px rgba(0,0,0,.4); }
+.card-icon svg { width: 30px; height: 30px; stroke-width: 1.7; }
+.card.busy .card-icon { color: var(--busy); }
+.card.error .card-icon { color: var(--bad); }
+/* the spinner: a ring of light that turns while the screen comes up */
+.spinner { width: 46px; height: 46px; border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(52,224,255,0) 0deg, rgba(52,224,255,.15) 120deg, var(--accent) 330deg, rgba(52,224,255,0) 360deg);
+  -webkit-mask: radial-gradient(circle, transparent 16px, #000 17px); mask: radial-gradient(circle, transparent 16px, #000 17px);
+  animation: turn 1s linear infinite; }
+@keyframes turn { to { transform: rotate(360deg); } }
+.card .steps { display: flex; gap: 8px; margin-top: 14px; }
+.card .steps i { width: 26px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.12); transition: background .3s; }
+.card .steps i.on { background: var(--accent); box-shadow: 0 0 8px rgba(52,224,255,.6); }
+
+.btn { border: 0; padding: 10px 18px; border-radius: 12px; font-weight: 600; font-size: 14px; color: var(--ink);
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.05));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 6px 16px rgba(0,0,0,.35); transition: filter .15s, transform .1s; }
+.btn:hover { filter: brightness(1.25); }
+.btn:active { transform: translateY(1px); }
+.btn.primary { color: #041016; background: linear-gradient(180deg, #6ff0ff, #19c6ea);
+  box-shadow: 0 0 0 1px rgba(52,224,255,.5), 0 8px 22px rgba(25, 198, 234, .35); }
+.btn.small { padding: 7px 12px; font-size: 13px; border-radius: 10px; }
+.btn.ghost { background: transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+
+/* ---- settings: a sheet over the right of the screen ------------------------------------------------------------ */
+
+.settings { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 62%); padding: 22px 22px 18px;
+  display: flex; flex-direction: column; gap: 4px; overflow: auto;
+  background: linear-gradient(180deg, rgba(16, 19, 26, .97), rgba(10, 12, 17, .97));
+  box-shadow: -1px 0 0 rgba(255,255,255,.08), -30px 0 60px rgba(0,0,0,.5);
+  transform: translateX(105%); transition: transform .32s cubic-bezier(.2, .9, .2, 1); }
+.settings.open { transform: none; }
+.settings header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.settings h2 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.01em; }
+.icon-btn { width: 34px; height: 34px; border: 0; border-radius: 10px; display: grid; place-items: center;
+  background: rgba(255,255,255,.06); }
+.icon-btn:hover { background: rgba(255,255,255,.12); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,.06); }
+.row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.row-text b { font-size: 14px; font-weight: 600; }
+.row-text span { font-size: 12px; color: var(--ink-3); }
+.row-ctl { display: flex; align-items: center; gap: 8px; }
+#keyCap { min-width: 38px; text-align: center; font-size: 13px; padding: 6px 9px 7px; }
+#keyCap.listening { color: #041016; background: linear-gradient(180deg, #6ff0ff, #19c6ea); animation: pulse 1.1s ease infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(52,224,255,.25); } }
+.feedback { margin: 2px 0 4px; min-height: 16px; font-size: 12px; color: var(--ink-2); }
+.feedback.ok { color: var(--ok); }
+.feedback.bad { color: var(--bad); }
+.seg { display: flex; padding: 3px; border-radius: 11px; background: rgba(255,255,255,.06);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.seg button { border: 0; background: transparent; padding: 6px 11px; border-radius: 8px; font-size: 12.5px;
+  color: var(--ink-2); font-weight: 600; }
+.seg button.on { color: var(--ink); background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.08));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 2px 6px rgba(0,0,0,.35); }
+.switch { position: relative; flex: none; width: 44px; height: 26px; border: 0; border-radius: 13px; padding: 0;
+  background: rgba(255,255,255,.14); transition: background .2s; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #e9eef6;
+  box-shadow: 0 2px 5px rgba(0,0,0,.4); transition: transform .2s cubic-bezier(.3, .9, .3, 1); }
+.switch[aria-checked="true"] { background: linear-gradient(180deg, #4fe6ff, #19c6ea); }
+.switch[aria-checked="true"] i { transform: translateX(18px); }
+.settings footer { margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+
+/* ---- under the phone: the controls and what the phone is doing -------------------------------------------------- */
+
+.shelf { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.pills { display: flex; gap: 12px; }
+.pill-group { display: flex; padding: 4px; gap: 4px; border-radius: 16px; background: var(--glass);
+  box-shadow: inset 0 0 0 1px var(--glass-edge), 0 14px 30px rgba(0,0,0,.45); }
+.pill { display: flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border: 0; border-radius: 12px;
+  background: transparent; font-size: 13.5px; font-weight: 600; color: var(--ink); transition: background .15s, color .15s; }
+.pill.icon { width: 44px; padding: 0; justify-content: center; }
+.pill:hover { background: rgba(255,255,255,.10); color: #fff; }
+.pill:active { background: rgba(52,224,255,.18); }
+.pill:disabled { opacity: .35; pointer-events: none; }
+.status { display: flex; align-items: center; gap: 9px; padding: 7px 14px; border-radius: 999px; font-size: 12.5px;
+  color: var(--ink-2); background: rgba(10, 12, 18, .72); box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+.status.live .dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.status.busy .dot { background: var(--busy); box-shadow: 0 0 10px var(--busy); }
+.status.error .dot { background: var(--bad); box-shadow: 0 0 10px var(--bad); }
+.status.connecting .dot { animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.status #statusText { color: var(--ink); font-weight: 600; }
+.status .stats { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.status .stats:empty { display: none; }
+.status .hint { color: var(--ink-3); padding-left: 9px; border-left: 1px solid rgba(255,255,255,.10); }
+.status .hint kbd { font-size: 11px; padding: 3px 6px 4px; }
+
+/* ---- the note in the corner, while the phone is away ------------------------------------------------------------ */
+
+#toast { position: fixed; top: 32px; right: 32px; display: flex; align-items: center; gap: 12px; padding: 12px 18px 12px 12px;
+  border-radius: 16px; background: rgba(13, 16, 23, .92); box-shadow: inset 0 0 0 1px rgba(255,255,255,.10),
+  0 18px 40px rgba(0,0,0,.5); opacity: 0; transform: translateY(-14px); transition: opacity .3s, transform .35s cubic-bezier(.2,.9,.2,1);
+  pointer-events: none; }
+#toast.show { opacity: 1; transform: none; }
+.toast-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; color: var(--accent);
+  background: rgba(52,224,255,.10); box-shadow: inset 0 0 0 1px rgba(52,224,255,.25); }
+.toast-text { display: flex; flex-direction: column; gap: 2px; }
+.toast-text b { font-size: 14px; font-weight: 650; }
+.toast-text span { font-size: 12.5px; color: var(--ink-2); }

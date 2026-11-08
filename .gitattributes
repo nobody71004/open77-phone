@@ -1,0 +1,3 @@
+# Byte for byte, in either direction: no line-ending conversion on checkout or commit. The resource's files are
+# the files the game server loads, and the bundled noVNC is checked against its own build.
+* -text

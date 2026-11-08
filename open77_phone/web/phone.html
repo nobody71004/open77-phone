@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone</title>
+<!--
+  open77_phone -- the phone on the player's screen. One page for the whole session, created by client/main.lua and
+  never hidden (a hidden surface does not repaint on this build): it draws nothing until the phone is opened, and
+  then a phone holding the server's Android, with its screen live through noVNC (vendor/novnc-rfb.js, MPL-2.0).
+  phone.js is the behaviour, phone.css the look.
+-->
+<link rel="stylesheet" href="phone.css">
+</head>
+<body>
+<div id="scrim" aria-hidden="true"></div>
+
+<div id="toast" role="status" aria-live="polite">
+  <div class="toast-icon"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.6"/><path d="M10.5 18.6h3"/></svg></div>
+  <div class="toast-text"><b id="toastTitle">The phone is free</b><span id="toastBody">Press F1 to pick it up</span></div>
+</div>
+
+<div id="dock" class="closed">
+  <div id="device" class="device landscape">
+    <div class="rim" aria-hidden="true"><i class="band b1"></i><i class="band b2"></i><i class="band b3"></i><i class="band b4"></i></div>
+    <button class="key vol-up" id="volUp" title="Volume up" aria-label="Volume up"></button>
+    <button class="key vol-down" id="volDown" title="Volume down" aria-label="Volume down"></button>
+    <button class="key power" id="power" title="Put the phone away" aria-label="Put the phone away"></button>
+    <div class="bezel">
+      <div class="camera" aria-hidden="true"><i></i></div>
+      <div class="speaker" aria-hidden="true"></div>
+      <div class="screen" id="screen">
+        <div id="vnc"></div>
+        <div class="glass" aria-hidden="true"></div>
+
+        <div class="card" id="card" hidden>
+          <div class="card-icon" id="cardIcon"></div>
+          <h1 id="cardTitle">Connecting</h1>
+          <p id="cardText">Asking the server for the phone</p>
+          <div class="card-actions" id="cardActions">
+            <button class="btn primary" id="cardAgain">Try again</button>
+            <button class="btn" id="cardAway">Put away</button>
+          </div>
+        </div>
+
+        <aside class="settings" id="settings" aria-hidden="true">
+          <header>
+            <h2>Phone settings</h2>
+            <button class="icon-btn" id="settingsClose" title="Close settings" aria-label="Close settings">
+              <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
+          </header>
+          <section class="row">
+            <div class="row-text"><b>Phone key</b><span id="keyNote">Opens and puts away the phone</span></div>
+            <div class="row-ctl">
+              <kbd id="keyCap">F1</kbd>
+              <button class="btn small" id="keyChange">Change</button>
+              <button class="btn small ghost" id="keyReset" title="Back to F1">Reset</button>
+            </div>
+          </section>
+          <p class="feedback" id="keyFeedback"></p>
+          <section class="row">
+            <div class="row-text"><b>Size</b></div>
+            <div class="seg" id="segSize">
+              <button data-v="compact">Compact</button><button data-v="standard">Standard</button><button data-v="large">Large</button>
+            </div>
+          </section>
+          <section class="row">
+            <div class="row-text"><b>Position</b></div>
+            <div class="seg" id="segSide">
+              <button data-v="left">Left</button><button data-v="center">Center</button><button data-v="right">Right</button>
+            </div>
+          </section>
+          <section class="row">
+            <div class="row-text"><b>Dim the game</b><span>Behind the phone while it is out</span></div>
+            <button class="switch" id="swDim" role="switch" aria-checked="true"><i></i></button>
+          </section>
+          <section class="row">
+            <div class="row-text"><b>Pointer on the screen</b><span>Android's own, if you see two</span></div>
+            <div class="seg" id="segPointer">
+              <button data-v="game">Game's</button><button data-v="android">Android's</button>
+            </div>
+          </section>
+          <section class="row">
+            <div class="row-text"><b>Connection numbers</b><span>Size, frame rate and data rate under the phone</span></div>
+            <button class="switch" id="swStats" role="switch" aria-checked="false"><i></i></button>
+          </section>
+          <footer>The key is also in Pause &rsaquo; Settings &rsaquo; Key bindings, as &ldquo;Phone: open / close&rdquo;.</footer>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <div class="shelf">
+    <div class="pills">
+      <div class="pill-group">
+        <button class="pill" id="navBack" title="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span>Back</span></button>
+        <button class="pill" id="navHome" title="Home"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/></svg><span>Home</span></button>
+      </div>
+      <div class="pill-group">
+        <button class="pill icon" id="volDownPill" title="Volume down"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 12h4"/></svg></button>
+        <button class="pill icon" id="volUpPill" title="Volume up"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 12h4M17.5 10v4"/></svg></button>
+      </div>
+      <div class="pill-group">
+        <button class="pill icon" id="openSettings" title="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></svg></button>
+        <button class="pill icon" id="putAway" title="Put away"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+    </div>
+    <div class="status">
+      <span class="dot" id="dot"></span>
+      <span id="statusText">Connecting</span>
+      <span class="stats" id="stats"></span>
+      <span class="hint" id="hint"><kbd id="hintKey">F1</kbd> or <kbd>Esc</kbd> to put away</span>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/novnc-rfb.js"></script>
+<script src="phone.js"></script>
+</body>
+</html>

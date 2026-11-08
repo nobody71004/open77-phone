@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    name: The resource's suite, the page and the web server script
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Lua 5.4
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua5.4
+
+      # The lease, the tickets, the web server's question, and the client and server halves in stand-ins of the
+      # game's runtimes (125 checks). The end-to-end rehearsal (tests/t_phone.py) needs a whole stand-in machine --
+      # Xvfb, x11vnc, websockify, nginx, Chromium -- and is run where those are.
+      - name: tests/run.lua
+        working-directory: open77_phone
+        run: lua5.4 tests/run.lua
+
+      - name: The phone page parses
+        run: node --check open77_phone/web/phone.js
+
+      - name: The web server script and the rehearsal compile
+        run: python3 -m py_compile tools/phone_server.py tests/t_phone.py

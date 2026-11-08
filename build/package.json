@@ -1,0 +1,11 @@
+{
+  "name": "open77-phone-novnc-build",
+  "private": true,
+  "description": "Builds open77_phone/web/vendor/novnc-rfb.js (node build-novnc.mjs ../open77_phone/web/vendor/novnc-rfb.js)",
+  "dependencies": {
+    "@novnc/novnc": "1.6.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  }
+}
