@@ -13,7 +13,8 @@ dofile("server/lease.lua")
 dofile("server/http.lua")
 
 local now = 0
-local lease = PhoneLease.new({ clock = function() return now end })
+-- (selftests: the rehearsal checks the whole way more often than a server start ever would)
+local lease = PhoneLease.new({ clock = function() return now end, selftestLimit = 100 })
 local env = { encode = Json.encode, version = "e2e", configured = true }
 
 local function answer(value)

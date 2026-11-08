@@ -44,8 +44,12 @@ RES = os.environ.get("O77_PHONE_RES") or next((p_ for p_ in (os.path.join(KIT, "
                                                               "/home/claude/phone/open77_phone")
                                                if os.path.isfile(os.path.join(p_, "open77.lua"))), "")
 RES = os.path.abspath(RES)
-RES_VERSION = (re.search(r'^version\s+"([^"]+)"', open(os.path.join(RES, "open77.lua")).read(), re.M) or [None, "?"])[1] \
-    if os.path.isfile(os.path.join(RES, "open77.lua")) else "?"
+# A release rehearsal: the phone_server.py and the resource a server owner gets (O77_PHONE_SCRIPT, O77_PHONE_INSTALL)
+# instead of the repository's; the rules behind the stand-in listener still run from RES's tests/e2e_bridge.lua.
+SCRIPT = os.path.abspath(os.environ.get("O77_PHONE_SCRIPT") or SCRIPT)
+INSTALL_FROM = os.path.abspath(os.environ.get("O77_PHONE_INSTALL") or RES)
+RES_VERSION = (re.search(r'^version\s+"([^"]+)"', open(os.path.join(INSTALL_FROM, "open77.lua")).read(), re.M) or [None, "?"])[1] \
+    if os.path.isfile(os.path.join(INSTALL_FROM, "open77.lua")) else "?"
 SHOTS = os.environ.get("O77_PHONE_SHOTS", "")
 T = tempfile.mkdtemp(prefix="t-phone-")
 ROOT = os.path.join(T, "root")
@@ -202,8 +206,8 @@ class Site(http.server.BaseHTTPRequestHandler):
             ANDROID["loads"] += 1
             return self._send(200, ANDROID_PAGE.encode(), "text/html")
         if u.path.startswith("/web/"):
-            p = os.path.normpath(os.path.join(RES, u.path.lstrip("/")))
-            if p.startswith(os.path.join(RES, "web")) and os.path.isfile(p):
+            p = os.path.normpath(os.path.join(INSTALL_FROM, u.path.lstrip("/")))
+            if p.startswith(os.path.join(INSTALL_FROM, "web")) and os.path.isfile(p):
                 ctype = {".html": "text/html", ".js": "text/javascript", ".css": "text/css"}.get(os.path.splitext(p)[1], "application/octet-stream")
                 return self._send(200, open(p, "rb").read(), ctype)
         if u.path == "/__test/request":
@@ -330,7 +334,7 @@ write(os.path.join(STAGING, "server.jsonc"), f"""{{
   /* resources */ "resources": {{ "load": ["open77_phone"] }},
 }}
 """)
-shutil.copytree(RES, os.path.join(STAGING, "resources/assets/xyberrp/open77_phone"),
+shutil.copytree(INSTALL_FROM, os.path.join(STAGING, "resources/assets/xyberrp/open77_phone"),
                 ignore=shutil.ignore_patterns("tests", "*.md"))
 cfgp = os.path.join(STAGING, "resources/assets/xyberrp/open77_phone/server/config.lua")
 write(cfgp, open(cfgp).read().replace('wsUrl = ""', 'wsUrl = "wss://xyberrp.duckdns.org/open77-phone-staging/ws"'))
@@ -369,6 +373,49 @@ try:
           and "open77_phone not installed" in out, out)
     check("look: the routes are not there yet (404) -- and nothing changed", "/open77-phone-staging/ws now: HTTP 404" in out
           and site() == before, out)
+
+    print("== another machine's layout: one game server named on the command line (--server-dir, --path, --ws-upstream)")
+    MINE = ["--roles", "mine", "--server-dir", "/opt/open77-xbuniverse-staging", "--path", "/open77-phone-mine",
+            "--ws-upstream", f"127.0.0.1:{WS_PORT}"]
+    code, out, res = phone("look", *MINE, "--vnc", f"127.0.0.1:{VNC_PORT}")
+    check("look, a game server named on the command line: its listener and open77_phone, websockify as given, VNC's greeting",
+          code == 0 and "mine (/opt/open77-xbuniverse-staging): httpHandlers on" in out and "given on the command line" in out
+          and "RFB 003.008, security None" in out and "/open77-phone-mine/ws now: HTTP 404" in out, out)
+    code, out, res = phone("fix", *MINE, "--ts", "20261107-125000")
+    check("fix for it: /open77-phone-mine's two locations, the whole way checked (403; 101 and VNC's greeting; 403)",
+          code == 0 and res.get("result") == "fixed" and "/open77-phone-mine/ws with no ticket: HTTP 403" in out
+          and "VNC's own greeting through it" in out and "location = /open77-phone-mine/ws" in site(), out)
+    code, out, res = phone("putback", *MINE, "--ts", "20261107-125500")
+    check("... put back: the site byte for byte what it was", code == 0 and site() == before, out)
+    EXAMPLE = os.environ.get("O77_PHONE_NGINX_EXAMPLE", "")
+    if EXAMPLE:
+        print("== by hand, from the release's nginx example (INSTALL.md, step 6)")
+        lines = [ln for ln in open(EXAMPLE).read().splitlines() if ln.strip() and not ln.startswith("# open77-phone:")
+                 and not ln.startswith("#   ") and not ln.startswith("# Paste") and not ln.startswith("# and nginx")
+                 and not ln.startswith("# Keep") and not ln.startswith("# verify")]
+        pasted = "\n".join("    " + ln.replace("11781", str(LP)).replace("127.0.0.1:8001", f"127.0.0.1:{WS_PORT}")
+                            for ln in lines) + "\n"
+        s0 = site()
+        anchor = "    location /healthz"
+        write(os.path.join(ROOT, "etc/nginx/sites-enabled/redsync-cdn"), s0.replace(anchor, pasted + anchor, 1))
+        r_ = subprocess.run(NGINX + ["-t"], capture_output=True, text=True)
+        subprocess.run(NGINX + ["-s", "reload"], capture_output=True)
+        time.sleep(1.5)
+        check("the example, pasted with the port and websockify filled in: nginx -t accepts it",
+              r_.returncode == 0 and len(lines) == 3, (r_.stderr, lines))
+        HAND = ["--roles", "myserver", "--server-dir", "/opt/open77-xbuniverse-staging", "--path", "/open77-phone-myserver",
+                "--ws-upstream", f"127.0.0.1:{WS_PORT}"]
+        code, out, res = phone("verify", *HAND)
+        check("phone_server.py verify finds it working the whole way (403; 101 and VNC's greeting; 403)",
+              code == 0 and res.get("result") == "working" and "VNC's own greeting through it" in out, out)
+        code, out, res = phone("putback", *HAND, "--ts", "20261107-125800")
+        check("... and putback takes the pasted lines out again: the site byte for byte what it was",
+              code == 0 and site() == s0, out)
+        write(os.path.join(ROOT, "etc/nginx/sites-available/redsync-cdn"), s0)
+    code, out, res = phone("look", "--roles", "a,b", "--server-dir", "/x")
+    check("--server-dir with two game servers named: refused (exit 2), nothing done", code == 2 and "ONE game server" in out, out)
+    code, out, res = phone("look", "--roles", "mine", "--server-dir", "/x", "--path", "/somewhere")
+    check("a --path that is not /open77-phone-<name>: refused (exit 2)", code == 2 and "--path: /open77-phone-<name>" in out, out)
 
     print("== fix staging and production: production is refused (open77_phone does not answer there)")
     code, out, res = phone("fix", "--roles", "staging,production", "--ts", "20261107-130000")

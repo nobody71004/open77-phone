@@ -1,9 +1,10 @@
 -- open77_phone -- server/config.lua
 --
--- This game server's own settings. The kit that installs the phone writes this
--- file for each server (tools/phone), because the one thing that differs between
--- them is where their players reach the phone's screen: the web server publishes
--- one WebSocket per game server, each asking that server's own tickets.
+-- This game server's own settings. Set wsUrl to the route the web server publishes
+-- for this game server (INSTALL.md, steps 3 and 6): the one thing that differs
+-- between servers is where their players reach the phone's screen, one WebSocket
+-- per game server, each asking that server's own tickets. (XyberRP's kit writes
+-- this file for each of its servers.)
 --
 -- Server only: it is never sent to a client as a file. A client is told `wsUrl`
 -- together with a ticket, when it asks for the phone.

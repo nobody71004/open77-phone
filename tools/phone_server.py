@@ -7,6 +7,16 @@ its own and runs it as root:
     python3 phone_server.py verify  WORKDIR --roles staging                                    READ ONLY (one selftest)
     python3 phone_server.py putback WORKDIR --roles staging --ts TS
 
+    Another machine than XyberRP's (one game server at a time):
+    python3 phone_server.py fix WORKDIR --roles mine --server-dir /opt/my-open77-server --path /open77-phone-mine
+                                --public-host play.example.org [--ws-upstream 127.0.0.1:8001 --vnc 127.0.0.1:5900]
+      --roles NAME        a short name for the game server (its route is /open77-phone-NAME unless --path says)
+      --server-dir DIR    the game server's folder: its server.jsonc (httpHandlers) and its resources
+      --path P            the route's path, /open77-phone-<something>
+      --public-host H     the host the players reach (the nginx server block serving it on 443 gets the locations)
+      --ws-upstream H:P   websockify, as nginx reaches it (else read from the unit --ws-unit names,
+                          open77-android-native-web.service by default); --vnc H:P the VNC server behind it (look only)
+
 The in-game phone (the open77_phone resource) shows the native Android: Waydroid's screen as VNC (wayvnc on
 127.0.0.1:5900), as a WebSocket (websockify, open77-android-native-web, port 8001 -- reachable from the Docker bridge
 only).  A player's game reaches it through the web server, one path per game server:
@@ -73,7 +83,33 @@ def arg(name, default=""):
 
 PUBLIC_HOST = arg("--public-host", "xyberrp.duckdns.org")
 HTTPS_PORT = int(arg("--https-port", os.environ.get("O77_HTTPS_PORT", "443")))
-WS_UNIT = "open77-android-native-web.service"
+# Another server than XyberRP's: the game server's folder and the route for ONE role (--roles NAME), and where
+# websockify listens when its unit is not open77-android-native-web.service.
+SERVER_DIR = arg("--server-dir", "")
+ROUTE_PATH = arg("--path", "")
+WS_UNIT = arg("--ws-unit", "open77-android-native-web.service")
+WS_GIVEN = arg("--ws-upstream", os.environ.get("O77_WS_UPSTREAM", ""))
+VNC_GIVEN = arg("--vnc", "")
+
+
+def configure_roles():
+    """--server-dir / --path describe one game server this script has no entry for (or move one it has)."""
+    if not (SERVER_DIR or ROUTE_PATH):
+        return
+    names = [r.strip() for r in arg("--roles", "").split(",") if r.strip()]
+    if len(names) != 1:
+        raise SystemExit("--server-dir and --path describe ONE game server: name it with --roles NAME")
+    name = names[0]
+    if not re.match(r"^[a-z0-9][a-z0-9-]{0,30}$", name):
+        raise SystemExit(f"--roles: a short name in lower case (letters, digits, -), not {name!r}")
+    base = ROLES.get(name, {})
+    route = ROUTE_PATH or base.get("path") or f"/open77-phone-{name}"
+    if not re.match(r"^/open77-phone-[A-Za-z0-9_-]{1,40}$", route):
+        raise SystemExit(f"--path: /open77-phone-<name>, not {route!r}")
+    server = (SERVER_DIR or base.get("server") or "").rstrip("/")
+    if not server.startswith("/"):
+        raise SystemExit("--server-dir: the game server's folder, absolute (where its server.jsonc is)")
+    ROLES[name] = {"server": server, "path": route}
 
 
 def path(p):
@@ -283,13 +319,19 @@ def ours(line, role=None):
 
 
 def websockify_upstream():
-    """Where websockify listens, from its unit's command line (0.0.0.0:8001 -> 127.0.0.1:8001)."""
+    """Where websockify listens: --ws-upstream HOST:PORT when given (and the VNC server behind it, --vnc HOST:PORT), or
+    read from its unit's command line (0.0.0.0:8001 -> 127.0.0.1:8001)."""
+    if WS_GIVEN:
+        if not re.match(r"^[A-Za-z0-9.-]+:\d{1,5}$", WS_GIVEN):
+            raise SystemExit(f"--ws-upstream: HOST:PORT (websockify, as nginx reaches it), not {WS_GIVEN!r}")
+        if VNC_GIVEN and not re.match(r"^[A-Za-z0-9.-]+:\d{1,5}$", VNC_GIVEN):
+            raise SystemExit(f"--vnc: HOST:PORT (the VNC server behind websockify), not {VNC_GIVEN!r}")
+        return WS_GIVEN, "given on the command line", VNC_GIVEN or None
     code, out = run(SYSTEMCTL + ["show", WS_UNIT, "-p", "ExecStart", "-p", "ActiveState"])
     props = dict(ln.split("=", 1) for ln in out.splitlines() if "=" in ln)
     m = re.search(r"websockify\S*\s+(?:--\S+\s+)*(?:([\d.]+|\[[^\]]*\]):)?(\d+)\s+([\d.]+):(\d+)", props.get("ExecStart", ""))
     if not m:
-        override = os.environ.get("O77_WS_UPSTREAM")
-        return (override, props.get("ActiveState", "?"), None) if override else (None, props.get("ActiveState", "?"), None)
+        return None, props.get("ActiveState", "?"), None
     return f"127.0.0.1:{m.group(2)}", props.get("ActiveState", "?"), f"{m.group(3)}:{m.group(4)}"
 
 
@@ -597,7 +639,8 @@ def fix(ts):
         return {"result": "not changed", "why": "site"}
     up, state, vnc = websockify_upstream()
     if not up:
-        say(f"  !! where websockify listens could not be read from {WS_UNIT}: nothing changed")
+        say(f"  !! where websockify listens could not be read from {WS_UNIT} (name it: --ws-upstream HOST:PORT, or "
+            "--ws-unit UNIT): nothing changed")
         return {"result": "not changed", "why": "websockify"}
     todo, res = [], {"roles": {}}
     for role in roles_asked():
@@ -741,6 +784,7 @@ def main():
         return 2
     ts = arg("--ts") or time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     try:
+        configure_roles()
         if MODE == "look":
             res = look()
         elif MODE == "verify":

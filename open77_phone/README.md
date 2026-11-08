@@ -77,7 +77,7 @@ and VNC's own greeting, the same ticket again 403. Anything not right is put bac
 
 ## This server's settings (`server/config.lua`)
 
-Written per game server by the kit that installs the phone:
+Set for each game server (the release's `INSTALL.md`, step 3; XyberRP's kit writes it for each of its servers):
 
 | | |
 |---|---|
@@ -87,12 +87,12 @@ Written per game server by the kit that installs the phone:
 | `leaseSeconds` | 45 |
 | `idleSeconds` | 600 (only held against a holder while somebody waits) |
 
-The server also needs `httpHandlers` on (`server.jsonc`), which the watch party already uses.
+The server also needs `httpHandlers` on, on loopback (`server.jsonc`; `INSTALL.md`, step 4).
 
 ## What it logs
 
-- client: `[open77_phone] key F1 (registered, consumed)`, `opened (key); keyboard and mouse to the phone:
-  yes; asking the server`, `the phone is ours (picked up); opening the screen at xyberrp.duckdns.org`,
+- client: `[open77_phone] key F1 (registered, consumed)`, `opened (key, opening 1); keyboard and mouse to the
+  phone: yes; asking the server`, `the phone is ours (picked up); opening the screen at xyberrp.duckdns.org`,
   `screen live -- 1280x720, attempt 1`, a line of numbers a minute (size, data rate, updates/s, idle),
   `closed (escape, opening 3); the phone is free for others`, and everything the page reports as
   `page: ...`; `the phone key 20 ms after the phone put itself away: the same press, ignored`,
